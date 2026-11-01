@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { randomBytes } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import { z } from 'zod';
 import { env } from './config/env.js';
 import { generateMystery, toPublicCase } from './services/generator.js';
@@ -99,5 +101,15 @@ app.get('/api/v1/sessions/:sessionId/result', async (req, res) => {
   const item = await getCase(String(session.caseId));
   res.json({ success: true, data: { correct: session.accusation.correct, culprit: item.publicData.suspects.find(s => s.id === item.solution.culpritSuspectId), solution: item.solution, evidence: item.publicData.evidence.filter(e => item.solution.decisiveEvidenceIds.includes(e.id)) } });
 });
+
+// Serve the Vite build from the same origin as the API in production.
+if (env.nodeEnv === 'production') {
+  const clientDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../client/dist');
+  app.use(express.static(clientDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) return next();
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
 
 app.use((err, _req, res, _next) => { console.error('api_error', { message: err.message }); res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Something went wrong. Please try again.' } }); });
