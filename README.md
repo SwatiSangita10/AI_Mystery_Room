@@ -1,6 +1,6 @@
 # AI Mystery Room
 
-A scenario-driven mystery game built with React, Vite, Express, MongoDB/Mongoose, and Google Gemini. The interface uses an archival paper, ink, and vermilion theme. A deterministic fictional sample case is available when Gemini is not configured.
+A scenario-driven mystery game built with React, Vite, Express, MongoDB/Mongoose, and Google Gemini. The interface uses an archival paper, ink, and vermilion theme. A deterministic fictional sample case is available locally when Gemini is not configured.
 
 ## Run locally
 
@@ -11,24 +11,19 @@ A scenario-driven mystery game built with React, Vite, Express, MongoDB/Mongoose
 
 Without `MONGODB_URI`, the server uses in-memory storage (data resets when it restarts). Without `GEMINI_API_KEY`, it serves a clearly labeled, fixed fictional sample mystery. Images use generated visual placeholders until an image provider and object storage are configured.
 
-## Deploy to Railway (single web service)
+## Deploy to Render
 
-This repo builds the Vite client and serves it from the Express server, so the browser app and `/api/v1` API share one origin.
+The repository includes a `render.yaml` Blueprint. It builds the Vite frontend and serves it from Express alongside `/api/v1`, using one Render Web Service and one domain.
 
-1. Push this project to a GitHub repository. Keep `.env` out of Git; `.gitignore` already excludes it. Do not commit API keys.
-2. Create a MongoDB database in MongoDB Atlas. Add a database user, allow network access from Railway (Atlas IP allowlisting may require `0.0.0.0/0` for a hosted service), and copy the application's connection URI. Replace the password placeholder and URL-encode special characters in credentials.
+1. Push the project to a GitHub repository. Keep `.env` out of Git and never commit API keys; `.gitignore` already excludes `.env`.
+2. Set up MongoDB Atlas: create a cluster, create a database user, and configure Network Access to allow your Render service. For a straightforward setup, Atlas may require allowing `0.0.0.0/0`; use a strong database password and restrict access where your setup permits. Copy the MongoDB connection URI, replacing its password placeholder and URL-encoding special characters in credentials.
 3. Create a Google Gemini API key in Google AI Studio.
-4. In Railway, create a project and choose **Deploy from GitHub repo**, then select this repository. Railway detects the root `package.json` workspaces. Set the build command to `npm run build` and the start command to `npm start` if Railway does not detect them automatically.
-5. Add these variables in the Railway service's **Variables** panel:
-   - `NODE_ENV` = `production`
-   - `SESSION_SECRET` = a long random secret (generate one locally; do not reuse the development value)
-   - `MONGODB_URI` = your Atlas connection URI
-   - `GEMINI_API_KEY` = your Gemini key
-   - `GEMINI_MODEL` = `gemini-2.5-flash` (optional)
-6. Deploy. In the service's **Networking** settings, generate a public domain. Open it and confirm the landing page loads.
-7. Visit `https://YOUR-DOMAIN/health`; expect JSON with `status: "ok"`, `storage: "mongodb"`, and `ai: true`. Create a case to check generation and persistence end to end.
-8. If using a custom domain, add it in Railway's **Networking** settings and point the DNS records Railway provides. The app's frontend and API remain on the same domain, so `VITE_API_BASE_URL` and `CLIENT_ORIGIN` need no production value.
+4. In the Render Dashboard, choose **New → Blueprint**, connect the GitHub repository, and select the branch containing `render.yaml`. Review the proposed `ai-mystery-room` Web Service and apply the Blueprint.
+5. Render will generate `SESSION_SECRET` and prompt for `MONGODB_URI` and `GEMINI_API_KEY`. Enter the Atlas URI and Gemini key when prompted. `NODE_ENV`, `GEMINI_MODEL`, build command, start command, and `/health` check are declared in `render.yaml`.
+6. Wait for the first deploy to finish. Open the service's `onrender.com` URL and confirm the landing page loads.
+7. Open `https://YOUR-SERVICE.onrender.com/health`. Confirm the response reports `status: "ok"`, `storage: "mongodb"`, and `ai: true`. Then create a mystery and complete an investigation to verify case generation and saved progress.
+8. For a custom domain, open the service's **Settings → Custom Domains**, add the domain, and follow Render's DNS instructions. Frontend and API share the domain, so no `VITE_API_BASE_URL` or `CLIENT_ORIGIN` production setting is needed.
 
-Railway supplies `PORT` automatically. The server requires MongoDB, Gemini, and a strong session secret when `NODE_ENV=production`. The default deployment is one Express service; it avoids cross-origin API configuration. Keep the API key and database URI in the hosting provider's secret variables, never in frontend `VITE_*` variables.
+The Blueprint uses Render's Free plan to make the initial deployment easy to try. Free web services spin down after 15 minutes without requests and can take about a minute to start again; their local filesystem is ephemeral. Case and session records are stored in MongoDB, but an in-progress generation job is held in server memory and can be lost if the service restarts. For a more reliable always-on experience, change `plan: free` to a paid plan in `render.yaml` or the Render Dashboard. Render supplies `PORT` automatically. Production requires MongoDB, Gemini, and a strong session secret. Keep API keys and the database URI in Render's secret environment variables, never in frontend `VITE_*` variables.
 
 The API is under `/api/v1`; `GET /health` reports service status. See `spec.md` for the complete product requirements.
