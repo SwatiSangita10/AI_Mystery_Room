@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto';
 import { MysteryCase, GameSession } from '../models/index.js';
+import { env } from '../config/env.js';
 
 const cases = new Map();
 const sessions = new Map();
-const memory = !process.env.MONGODB_URI;
+const memory = !env.mongoUri;
 const id = () => Math.random().toString(36).slice(2, 10);
 const hash = (token) => createHash('sha256').update(token).digest('hex');
 
